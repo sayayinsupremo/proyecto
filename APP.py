@@ -3,41 +3,43 @@ import requests
 
 app = Flask(__name__)
 
-# Configuración Maestra
+# CONFIGURACIÓN MAESTRA DE EDUARDO
 TOKEN = "8532303951:AAFQVWDrh0ZvVIhjUcEN5kki-WIPj0X30ho"
-# Datos globales para el Dashboard
+MI_ID = "5287380864"
+
+# Base de datos temporal del sistema
 data_store = {
-    "ticker": "XAUUSD",
-    "z_score": 0.0,
-    "prob": "68.2%",
-    "equity": 100000.0,
-    "expectancy": 3.06
+    "ticker": "XAUUSD", "z_score": 0.0, "prob": "68.2%", 
+    "equity": 100000.0, "expectancy": 3.06
 }
 
 HTML_TEMPLATE = '''
 <!DOCTYPE html>
 <html>
 <head>
-    <title>STELLAR PRESTAGE v3.5</title>
+    <title>STELLAR v3.5 - MACHALA HUB</title>
     <meta http-equiv="refresh" content="5">
     <style>
-        body { background: #0a0a0a; color: #e0e0e0; font-family: 'Courier New', monospace; text-align: center; }
-        .container { border: 2px solid #333; padding: 20px; display: inline-block; margin-top: 50px; }
-        .value { font-size: 3em; color: #00ff00; }
-        .alert { color: #ff0000; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0; } }
+        body { background: #070707; color: #f0f0f0; font-family: 'Segoe UI', Tahoma, sans-serif; text-align: center; }
+        .box { border: 3px solid #1a1a1a; padding: 30px; display: inline-block; margin-top: 60px; border-radius: 15px; background: #111; box-shadow: 0 0 20px rgba(0,255,0,0.1); }
+        .val { font-size: 4em; color: #00ff88; font-weight: bold; text-shadow: 0 0 10px rgba(0,255,136,0.5); }
+        .alert { color: #ff3333; animation: blink 0.8s infinite; text-shadow: 0 0 15px rgba(255,51,51,0.7); }
+        @keyframes blink { 50% { opacity: 0.3; } }
+        hr { border: 0.5px solid #333; margin: 20px 0; }
     </style>
 </head>
 <body>
-    <h1>STELLAR PRESTAGE v3.5 - 2026</h1>
-    <div class="container">
-        <h2>{{ ticker }} Z-SCORE</h2>
-        <div class="value {% if z_score|abs > 2 %}alert{% endif %}">{{ z_score }}</div>
-        <p>PROB. REVERSIÓN: {{ prob }}</p>
+    <h1 style="letter-spacing: 5px;">STELLAR PRESTAGE v3.5</h1>
+    <div class="box">
+        <h2 style="color: #888;">{{ ticker }} Z-SCORE</h2>
+        <div class="val {% if z_score|abs > 2 %}alert{% endif %}">{{ z_score }}</div>
+        <p style="font-size: 1.2em;">PROB. REVERSIÓN: <span style="color: #00ff88;">{{ prob }}</span></p>
         <hr>
-        <h3>EQUITY: ${{ equity }}</h3>
-        <p>ESPERANZA MATEMÁTICA: ${{ expectancy }}</p>
+        <h3 style="color: #aaa;">EQUITY ACTUAL</h3>
+        <div style="font-size: 2em; color: #fff;">${{ "{:,.2f}".format(equity) }}</div>
+        <p style="color: #555;">ESPERANZA MATEMÁTICA: ${{ expectancy }}</p>
     </div>
+    <p style="margin-top: 20px; color: #333;">MACHALA HUB - 2026</p>
 </body>
 </html>
 '''
@@ -46,20 +48,23 @@ HTML_TEMPLATE = '''
 def home():
     return render_template_string(HTML_TEMPLATE, **data_store)
 
-@app.route('/webhook', methods=['POST'])
-def webhook():
+@app.route('/telegram-bridge', methods=['POST'])
+def bridge():
     global data_store
-    incoming_data = request.json
-    # Actualizamos el motor estadístico
-    data_store.update(incoming_data)
-    
-    # Enviamos notificación a tu Telegram automáticamente
-    # Nota: Aquí falta tu Chat ID, pero el bot ya está enlazado al token.
-    msg = f"🚀 STELLAR UPDATE\nZ-Score: {data_store['z_score']}\nProb: {data_store['prob']}"
-    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", 
-                  json={"chat_id": "TU_USER_ID_AQUI", "text": msg})
-    
-    return "OK", 200
+    update = request.json
+    # Solo acepta mensajes de TU cuenta de Telegram
+    if "message" in update and str(update["message"]["chat"]["id"]) == MI_ID:
+        texto = update["message"]["text"]
+        try:
+            # Formato esperado: z_score, prob, equity (ej: 2.45, 95.4, 99800)
+            parts = texto.split(',')
+            data_store["z_score"] = float(parts[0])
+            data_store["prob"] = parts[1].strip() + "%"
+            data_store["equity"] = float(parts[2])
+            return "Dashboard Actualizado", 200
+        except:
+            return "Error de formato", 400
+    return "No autorizado", 403
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)
